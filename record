@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+caps="cap_perfmon,cap_ipc_lock,cap_sys_ptrace,cap_syslog=ep"
+/usr/sbin/setcap -v "$caps" /usr/bin/perf || { "capabilietes on perf are not set"; exit 1; }
+sudo /usr/bin/cpupower frequency-set --governor performance &>/dev/null
+perf record -g -d ../benchmark-build/current/bench
+sudo /usr/bin/cpupower frequency-set --governor schedutil &>/dev/null

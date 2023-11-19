@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+echo "set capabilities"
+setcap -r /usr/bin/perf # set caps
+getcap -v  /usr/bin/perf # shows caps
+
+chgrp root /usr/bin/perf || exit 1
+chmod 755 /usr/bin/perf || exit 1
+
+# restpre debians default level
+sysctl kernel.perf_event_paranoid=3 || exit 1
+
+file=/usr/bin/perf.shell
+test -e $file && { rm $file || exit 1; }
+file=/etc/sudoers.d/perf
+test -e $file && { rm $file || exit 1; }

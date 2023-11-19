@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+sudo /usr/bin/cpupower frequency-set --governor performance &>/dev/null
+perf stat ../benchmark-build/current/bench
+sudo /usr/bin/cpupower frequency-set --governor schedutil &>/dev/null

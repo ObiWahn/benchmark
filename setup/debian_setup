@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+echo "create perf_users"
+groupadd --system perf_users
+chmod 750 /usr/bin/perf || exit 1
+chgrp perf_users /usr/bin/perf || exit 1
+
+# decrease the level from 3 to 2 on debian to allow cap_perfmon
+sysctl kernel.perf_event_paranoid=2
+
+echo "set capabilities"
+# setup capabilities
+caps="cap_perfmon,cap_ipc_lock,cap_sys_ptrace,cap_syslog=ep"
+setcap "$caps" /usr/bin/perf # set caps
+getcap -v  /usr/bin/perf # shows caps
+
+setcap -v "$caps" /usr/bin/perf
+caps_set=$?
+
+(( caps_set == 0 )) && echo "capabilities set on perf" || echo "could not set capabilities on perf"
+
+file=/etc/sudoers.d/perf
+echo "allow perf_users to use cpupower ($file)"
+# you might need to use different governors
+cat << EOF > $file
+%perf_users    ALL=NOPASSWD: /usr/bin/cpupower frequency-set --governor performance
+%perf_users    ALL=NOPASSWD: /usr/bin/cpupower frequency-set --governor schedutil
+%perf_users    ALL=NOPASSWD: /usr/bin/cpupower frequency-info*
+EOF
+test -e $file || { echo "failed to create $file"; exit 1; }
+
+(( caps_set == 0 )) && exit 0
+
+# add caps enabled shell as fallback
+cat << EOF >> $file
+%perf_users    ALL=/usr/bin/perf.shell
+EOF
+test -e $file || { echo "failed to append to $file"; exit 1; }
+
+file=/usr/bin/perf.shell
+cat << EOF > $file
+#!/bin/sh
+exec /usr/sbin/capsh --iab=^cap_perfmon --secbits=239 --user=\$SUDO_USER -- -l
+EOF
+chmod 755 $file
+test -x $file || { echo "failed to create $file"; exit 1; }
